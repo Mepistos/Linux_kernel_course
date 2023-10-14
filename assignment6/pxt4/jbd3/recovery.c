@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0+
 /*
- * linux/fs/jbd2/recovery.c
+ * linux/fs/jbd3/recovery.c
  *
  * Written by Stephen C. Tweedie <sct@redhat.com>, 1999
  *
  * Copyright 1999-2000 Red Hat Software --- All Rights Reserved
  *
  * Journal recovery routines for the generic filesystem journaling code;
- * part of the ext2fs journaling system.
+ * part of the pxt2fs journaling system.
  */
 
 #ifndef __KERNEL__
@@ -15,7 +15,7 @@
 #else
 #include <linux/time.h>
 #include <linux/fs.h>
-#include <linux/jbd2.h>
+#include <linux/jbd3.h>
 #include <linux/errno.h>
 #include <linux/crc32.h>
 #include <linux/blkdev.h>
@@ -84,10 +84,10 @@ static int do_readahead(journal_t *journal, unsigned int start)
 	nbufs = 0;
 
 	for (next = start; next < max; next++) {
-		err = jbd2_journal_bmap(journal, next, &blocknr);
+		err = jbd3_journal_bmap(journal, next, &blocknr);
 
 		if (err) {
-			printk(KERN_ERR "JBD2: bad block at offset %u\n",
+			printk(KERN_ERR "JBD3: bad block at offset %u\n",
 				next);
 			goto failed;
 		}
@@ -136,14 +136,14 @@ static int jread(struct buffer_head **bhp, journal_t *journal,
 	*bhp = NULL;
 
 	if (offset >= journal->j_maxlen) {
-		printk(KERN_ERR "JBD2: corrupted journal superblock\n");
+		printk(KERN_ERR "JBD3: corrupted journal superblock\n");
 		return -EFSCORRUPTED;
 	}
 
-	err = jbd2_journal_bmap(journal, offset, &blocknr);
+	err = jbd3_journal_bmap(journal, offset, &blocknr);
 
 	if (err) {
-		printk(KERN_ERR "JBD2: bad block at offset %u\n",
+		printk(KERN_ERR "JBD3: bad block at offset %u\n",
 			offset);
 		return err;
 	}
@@ -161,7 +161,7 @@ static int jread(struct buffer_head **bhp, journal_t *journal,
 	}
 
 	if (!buffer_uptodate(bh)) {
-		printk(KERN_ERR "JBD2: Failed to read block at offset %u\n",
+		printk(KERN_ERR "JBD3: Failed to read block at offset %u\n",
 			offset);
 		brelse(bh);
 		return -EIO;
@@ -171,20 +171,20 @@ static int jread(struct buffer_head **bhp, journal_t *journal,
 	return 0;
 }
 
-static int jbd2_descriptor_block_csum_verify(journal_t *j, void *buf)
+static int jbd3_descriptor_block_csum_verify(journal_t *j, void *buf)
 {
-	struct jbd2_journal_block_tail *tail;
+	struct jbd3_journal_block_tail *tail;
 	__be32 provided;
 	__u32 calculated;
 
-	if (!jbd2_journal_has_csum_v2or3(j))
+	if (!jbd3_journal_has_csum_v2or3(j))
 		return 1;
 
-	tail = (struct jbd2_journal_block_tail *)(buf + j->j_blocksize -
-			sizeof(struct jbd2_journal_block_tail));
+	tail = (struct jbd3_journal_block_tail *)(buf + j->j_blocksize -
+			sizeof(struct jbd3_journal_block_tail));
 	provided = tail->t_checksum;
 	tail->t_checksum = 0;
-	calculated = jbd2_chksum(j, j->j_csum_seed, buf, j->j_blocksize);
+	calculated = jbd3_chksum(j, j->j_csum_seed, buf, j->j_blocksize);
 	tail->t_checksum = provided;
 
 	return provided == cpu_to_be32(calculated);
@@ -201,8 +201,8 @@ static int count_tags(journal_t *journal, struct buffer_head *bh)
 	int			nr = 0, size = journal->j_blocksize;
 	int			tag_bytes = journal_tag_bytes(journal);
 
-	if (jbd2_journal_has_csum_v2or3(journal))
-		size -= sizeof(struct jbd2_journal_block_tail);
+	if (jbd3_journal_has_csum_v2or3(journal))
+		size -= sizeof(struct jbd3_journal_block_tail);
 
 	tagp = &bh->b_data[sizeof(journal_header_t)];
 
@@ -211,10 +211,10 @@ static int count_tags(journal_t *journal, struct buffer_head *bh)
 
 		nr++;
 		tagp += tag_bytes;
-		if (!(tag->t_flags & cpu_to_be16(JBD2_FLAG_SAME_UUID)))
+		if (!(tag->t_flags & cpu_to_be16(JBD3_FLAG_SAME_UUID)))
 			tagp += 16;
 
-		if (tag->t_flags & cpu_to_be16(JBD2_FLAG_LAST_TAG))
+		if (tag->t_flags & cpu_to_be16(JBD3_FLAG_LAST_TAG))
 			break;
 	}
 
@@ -230,7 +230,7 @@ do {									\
 } while (0)
 
 /**
- * jbd2_journal_recover - recovers a on-disk journal
+ * jbd3_journal_recover - recovers a on-disk journal
  * @journal: the journal to recover
  *
  * The primary function for recovering the log contents when mounting a
@@ -241,7 +241,7 @@ do {									\
  * blocks.  In the third and final pass, we replay any un-revoked blocks
  * in the log.
  */
-int jbd2_journal_recover(journal_t *journal)
+int jbd3_journal_recover(journal_t *journal)
 {
 	int			err, err2;
 	journal_superblock_t *	sb;
@@ -270,22 +270,22 @@ int jbd2_journal_recover(journal_t *journal)
 	if (!err)
 		err = do_one_pass(journal, &info, PASS_REPLAY);
 
-	jbd_debug(1, "JBD2: recovery, exit status %d, "
+	jbd_debug(1, "JBD3: recovery, exit status %d, "
 		  "recovered transactions %u to %u\n",
 		  err, info.start_transaction, info.end_transaction);
-	jbd_debug(1, "JBD2: Replayed %d and revoked %d/%d blocks\n",
+	jbd_debug(1, "JBD3: Replayed %d and revoked %d/%d blocks\n",
 		  info.nr_replays, info.nr_revoke_hits, info.nr_revokes);
 
 	/* Restart the log at the next transaction ID, thus invalidating
 	 * any existing commit records in the log. */
 	journal->j_transaction_sequence = ++info.end_transaction;
 
-	jbd2_journal_clear_revoke(journal);
+	jbd3_journal_clear_revoke(journal);
 	err2 = sync_blockdev(journal->j_fs_dev);
 	if (!err)
 		err = err2;
 	/* Make sure all replayed data is on permanent storage */
-	if (journal->j_flags & JBD2_BARRIER) {
+	if (journal->j_flags & JBD3_BARRIER) {
 		err2 = blkdev_issue_flush(journal->j_fs_dev, GFP_KERNEL, NULL);
 		if (!err)
 			err = err2;
@@ -294,7 +294,7 @@ int jbd2_journal_recover(journal_t *journal)
 }
 
 /**
- * jbd2_journal_skip_recovery - Start journal and wipe exiting records
+ * jbd3_journal_skip_recovery - Start journal and wipe exiting records
  * @journal: journal to startup
  *
  * Locate any valid recovery information from the journal and set up the
@@ -306,7 +306,7 @@ int jbd2_journal_recover(journal_t *journal)
  * much recovery information is being erased, and to let us initialise
  * the journal transaction sequence numbers to the next unused ID.
  */
-int jbd2_journal_skip_recovery(journal_t *journal)
+int jbd3_journal_skip_recovery(journal_t *journal)
 {
 	int			err;
 
@@ -317,14 +317,14 @@ int jbd2_journal_skip_recovery(journal_t *journal)
 	err = do_one_pass(journal, &info, PASS_SCAN);
 
 	if (err) {
-		printk(KERN_ERR "JBD2: error %d scanning journal\n", err);
+		printk(KERN_ERR "JBD3: error %d scanning journal\n", err);
 		++journal->j_transaction_sequence;
 	} else {
-#ifdef CONFIG_JBD2_DEBUG
+#ifdef CONFIG_JBD3_DEBUG
 		int dropped = info.end_transaction - 
 			be32_to_cpu(journal->j_superblock->s_sequence);
 		jbd_debug(1,
-			  "JBD2: ignoring %d transaction%s from the journal.\n",
+			  "JBD3: ignoring %d transaction%s from the journal.\n",
 			  dropped, (dropped == 1) ? "" : "s");
 #endif
 		journal->j_transaction_sequence = ++info.end_transaction;
@@ -338,7 +338,7 @@ static inline unsigned long long read_tag_block(journal_t *journal,
 						journal_block_tag_t *tag)
 {
 	unsigned long long block = be32_to_cpu(tag->t_blocknr);
-	if (jbd2_has_feature_64bit(journal))
+	if (jbd3_has_feature_64bit(journal))
 		block |= (u64)be32_to_cpu(tag->t_blocknr_high) << 32;
 	return block;
 }
@@ -363,7 +363,7 @@ static int calc_chksums(journal_t *journal, struct buffer_head *bh,
 		wrap(journal, *next_log_block);
 		err = jread(&obh, journal, io_block);
 		if (err) {
-			printk(KERN_ERR "JBD2: IO error %d recovering block "
+			printk(KERN_ERR "JBD3: IO error %d recovering block "
 				"%lu in log\n", err, io_block);
 			return 1;
 		} else {
@@ -375,39 +375,39 @@ static int calc_chksums(journal_t *journal, struct buffer_head *bh,
 	return 0;
 }
 
-static int jbd2_commit_block_csum_verify(journal_t *j, void *buf)
+static int jbd3_commit_block_csum_verify(journal_t *j, void *buf)
 {
 	struct commit_header *h;
 	__be32 provided;
 	__u32 calculated;
 
-	if (!jbd2_journal_has_csum_v2or3(j))
+	if (!jbd3_journal_has_csum_v2or3(j))
 		return 1;
 
 	h = buf;
 	provided = h->h_chksum[0];
 	h->h_chksum[0] = 0;
-	calculated = jbd2_chksum(j, j->j_csum_seed, buf, j->j_blocksize);
+	calculated = jbd3_chksum(j, j->j_csum_seed, buf, j->j_blocksize);
 	h->h_chksum[0] = provided;
 
 	return provided == cpu_to_be32(calculated);
 }
 
-static int jbd2_block_tag_csum_verify(journal_t *j, journal_block_tag_t *tag,
+static int jbd3_block_tag_csum_verify(journal_t *j, journal_block_tag_t *tag,
 				      void *buf, __u32 sequence)
 {
 	journal_block_tag3_t *tag3 = (journal_block_tag3_t *)tag;
 	__u32 csum32;
 	__be32 seq;
 
-	if (!jbd2_journal_has_csum_v2or3(j))
+	if (!jbd3_journal_has_csum_v2or3(j))
 		return 1;
 
 	seq = cpu_to_be32(sequence);
-	csum32 = jbd2_chksum(j, j->j_csum_seed, (__u8 *)&seq, sizeof(seq));
-	csum32 = jbd2_chksum(j, csum32, buf, j->j_blocksize);
+	csum32 = jbd3_chksum(j, j->j_csum_seed, (__u8 *)&seq, sizeof(seq));
+	csum32 = jbd3_chksum(j, csum32, buf, j->j_blocksize);
 
-	if (jbd2_has_feature_csum3(j))
+	if (jbd3_has_feature_csum3(j))
 		return tag3->t_checksum == cpu_to_be32(csum32);
 	else
 		return tag->t_checksum == cpu_to_be16(csum32);
@@ -476,7 +476,7 @@ static int do_one_pass(journal_t *journal,
 		 * either the next descriptor block or the final commit
 		 * record. */
 
-		jbd_debug(3, "JBD2: checking block %ld\n", next_log_block);
+		jbd_debug(3, "JBD3: checking block %ld\n", next_log_block);
 		err = jread(&bh, journal, next_log_block);
 		if (err)
 			goto failed;
@@ -492,7 +492,7 @@ static int do_one_pass(journal_t *journal,
 
 		tmp = (journal_header_t *)bh->b_data;
 
-		if (tmp->h_magic != cpu_to_be32(JBD2_MAGIC_NUMBER)) {
+		if (tmp->h_magic != cpu_to_be32(JBD3_MAGIC_NUMBER)) {
 			brelse(bh);
 			break;
 		}
@@ -512,15 +512,15 @@ static int do_one_pass(journal_t *journal,
 		 * to do with it?  That depends on the pass... */
 
 		switch(blocktype) {
-		case JBD2_DESCRIPTOR_BLOCK:
+		case JBD3_DESCRIPTOR_BLOCK:
 			/* Verify checksum first */
-			if (jbd2_journal_has_csum_v2or3(journal))
+			if (jbd3_journal_has_csum_v2or3(journal))
 				descr_csum_size =
-					sizeof(struct jbd2_journal_block_tail);
+					sizeof(struct jbd3_journal_block_tail);
 			if (descr_csum_size > 0 &&
-			    !jbd2_descriptor_block_csum_verify(journal,
+			    !jbd3_descriptor_block_csum_verify(journal,
 							       bh->b_data)) {
-				printk(KERN_ERR "JBD2: Invalid checksum "
+				printk(KERN_ERR "JBD3: Invalid checksum "
 				       "recovering block %lu in log\n",
 				       next_log_block);
 				err = -EFSBADCRC;
@@ -534,7 +534,7 @@ static int do_one_pass(journal_t *journal,
 			 * just skip over the blocks it describes. */
 			if (pass != PASS_REPLAY) {
 				if (pass == PASS_SCAN &&
-				    jbd2_has_feature_checksum(journal) &&
+				    jbd3_has_feature_checksum(journal) &&
 				    !info->end_transaction) {
 					if (calc_chksums(journal, bh,
 							&next_log_block,
@@ -571,7 +571,7 @@ static int do_one_pass(journal_t *journal,
 					 * report failure at the end. */
 					success = err;
 					printk(KERN_ERR
-						"JBD2: IO error %d recovering "
+						"JBD3: IO error %d recovering "
 						"block %ld in log\n",
 						err, io_block);
 				} else {
@@ -584,7 +584,7 @@ static int do_one_pass(journal_t *journal,
 					/* If the block has been
 					 * revoked, then we're all done
 					 * here. */
-					if (jbd2_journal_test_revoke
+					if (jbd3_journal_test_revoke
 					    (journal, blocknr,
 					     next_commit_ID)) {
 						brelse(obh);
@@ -593,12 +593,12 @@ static int do_one_pass(journal_t *journal,
 					}
 
 					/* Look for block corruption */
-					if (!jbd2_block_tag_csum_verify(
+					if (!jbd3_block_tag_csum_verify(
 						journal, tag, obh->b_data,
 						be32_to_cpu(tmp->h_sequence))) {
 						brelse(obh);
 						success = -EFSBADCRC;
-						printk(KERN_ERR "JBD2: Invalid "
+						printk(KERN_ERR "JBD3: Invalid "
 						       "checksum recovering "
 						       "data block %llu in "
 						       "log\n", blocknr);
@@ -613,7 +613,7 @@ static int do_one_pass(journal_t *journal,
 							journal->j_blocksize);
 					if (nbh == NULL) {
 						printk(KERN_ERR
-						       "JBD2: Out of memory "
+						       "JBD3: Out of memory "
 						       "during recovery.\n");
 						err = -ENOMEM;
 						brelse(bh);
@@ -624,9 +624,9 @@ static int do_one_pass(journal_t *journal,
 					lock_buffer(nbh);
 					memcpy(nbh->b_data, obh->b_data,
 							journal->j_blocksize);
-					if (flags & JBD2_FLAG_ESCAPE) {
+					if (flags & JBD3_FLAG_ESCAPE) {
 						*((__be32 *)nbh->b_data) =
-						cpu_to_be32(JBD2_MAGIC_NUMBER);
+						cpu_to_be32(JBD3_MAGIC_NUMBER);
 					}
 
 					BUFFER_TRACE(nbh, "marking dirty");
@@ -642,17 +642,17 @@ static int do_one_pass(journal_t *journal,
 
 			skip_write:
 				tagp += tag_bytes;
-				if (!(flags & JBD2_FLAG_SAME_UUID))
+				if (!(flags & JBD3_FLAG_SAME_UUID))
 					tagp += 16;
 
-				if (flags & JBD2_FLAG_LAST_TAG)
+				if (flags & JBD3_FLAG_LAST_TAG)
 					break;
 			}
 
 			brelse(bh);
 			continue;
 
-		case JBD2_COMMIT_BLOCK:
+		case JBD3_COMMIT_BLOCK:
 			/*     How to differentiate between interrupted commit
 			 *               and journal corruption ?
 			 *
@@ -689,7 +689,7 @@ static int do_one_pass(journal_t *journal,
 			 * much to do other than move on to the next sequence
 			 * number. */
 			if (pass == PASS_SCAN &&
-			    jbd2_has_feature_checksum(journal)) {
+			    jbd3_has_feature_checksum(journal)) {
 				int chksum_err, chksum_seen;
 				struct commit_header *cbh =
 					(struct commit_header *)bh->b_data;
@@ -706,9 +706,9 @@ static int do_one_pass(journal_t *journal,
 				}
 
 				if (crc32_sum == found_chksum &&
-				    cbh->h_chksum_type == JBD2_CRC32_CHKSUM &&
+				    cbh->h_chksum_type == JBD3_CRC32_CHKSUM &&
 				    cbh->h_chksum_size ==
-						JBD2_CRC32_CHKSUM_SIZE)
+						JBD3_CRC32_CHKSUM_SIZE)
 				       chksum_seen = 1;
 				else if (!(cbh->h_chksum_type == 0 &&
 					     cbh->h_chksum_size == 0 &&
@@ -729,7 +729,7 @@ static int do_one_pass(journal_t *journal,
 				if (chksum_err) {
 					info->end_transaction = next_commit_ID;
 
-					if (!jbd2_has_feature_async_commit(journal)) {
+					if (!jbd3_has_feature_async_commit(journal)) {
 						journal->j_failed_commit =
 							next_commit_ID;
 						brelse(bh);
@@ -739,11 +739,11 @@ static int do_one_pass(journal_t *journal,
 				crc32_sum = ~0;
 			}
 			if (pass == PASS_SCAN &&
-			    !jbd2_commit_block_csum_verify(journal,
+			    !jbd3_commit_block_csum_verify(journal,
 							   bh->b_data)) {
 				info->end_transaction = next_commit_ID;
 
-				if (!jbd2_has_feature_async_commit(journal)) {
+				if (!jbd3_has_feature_async_commit(journal)) {
 					journal->j_failed_commit =
 						next_commit_ID;
 					brelse(bh);
@@ -754,7 +754,7 @@ static int do_one_pass(journal_t *journal,
 			next_commit_ID++;
 			continue;
 
-		case JBD2_REVOKE_BLOCK:
+		case JBD3_REVOKE_BLOCK:
 			/* If we aren't in the REVOKE pass, then we can
 			 * just skip over this block. */
 			if (pass != PASS_REVOKE) {
@@ -792,7 +792,7 @@ static int do_one_pass(journal_t *journal,
 		/* It's really bad news if different passes end up at
 		 * different places (but possible due to IO errors). */
 		if (info->end_transaction != next_commit_ID) {
-			printk(KERN_ERR "JBD2: recovery pass %d ended at "
+			printk(KERN_ERR "JBD3: recovery pass %d ended at "
 				"transaction %u, expected %u\n",
 				pass, next_commit_ID, info->end_transaction);
 			if (!success)
@@ -812,26 +812,26 @@ static int do_one_pass(journal_t *journal,
 static int scan_revoke_records(journal_t *journal, struct buffer_head *bh,
 			       tid_t sequence, struct recovery_info *info)
 {
-	jbd2_journal_revoke_header_t *header;
+	jbd3_journal_revoke_header_t *header;
 	int offset, max;
 	int csum_size = 0;
 	__u32 rcount;
 	int record_len = 4;
 
-	header = (jbd2_journal_revoke_header_t *) bh->b_data;
-	offset = sizeof(jbd2_journal_revoke_header_t);
+	header = (jbd3_journal_revoke_header_t *) bh->b_data;
+	offset = sizeof(jbd3_journal_revoke_header_t);
 	rcount = be32_to_cpu(header->r_count);
 
-	if (!jbd2_descriptor_block_csum_verify(journal, header))
+	if (!jbd3_descriptor_block_csum_verify(journal, header))
 		return -EFSBADCRC;
 
-	if (jbd2_journal_has_csum_v2or3(journal))
-		csum_size = sizeof(struct jbd2_journal_block_tail);
+	if (jbd3_journal_has_csum_v2or3(journal))
+		csum_size = sizeof(struct jbd3_journal_block_tail);
 	if (rcount > journal->j_blocksize - csum_size)
 		return -EINVAL;
 	max = rcount;
 
-	if (jbd2_has_feature_64bit(journal))
+	if (jbd3_has_feature_64bit(journal))
 		record_len = 8;
 
 	while (offset + record_len <= max) {
@@ -843,7 +843,7 @@ static int scan_revoke_records(journal_t *journal, struct buffer_head *bh,
 		else
 			blocknr = be64_to_cpu(* ((__be64 *) (bh->b_data+offset)));
 		offset += record_len;
-		err = jbd2_journal_set_revoke(journal, blocknr, sequence);
+		err = jbd3_journal_set_revoke(journal, blocknr, sequence);
 		if (err)
 			return err;
 		++info->nr_revokes;

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * linux/fs/ext4/page-io.c
+ * linux/fs/pxt4/page-io.c
  *
- * This contains the new page_io functions for ext4
+ * This contains the new page_io functions for pxt4
  *
  * Written by Theodore Ts'o, 2010.
  */
@@ -26,21 +26,21 @@
 #include <linux/mm.h>
 #include <linux/backing-dev.h>
 
-#include "ext4_jbd2.h"
+#include "pxt4_jbd3.h"
 #include "xattr.h"
 #include "acl.h"
 
 static struct kmem_cache *io_end_cachep;
 
-int __init ext4_init_pageio(void)
+int __init pxt4_init_pageio(void)
 {
-	io_end_cachep = KMEM_CACHE(ext4_io_end, SLAB_RECLAIM_ACCOUNT);
+	io_end_cachep = KMEM_CACHE(pxt4_io_end, SLAB_RECLAIM_ACCOUNT);
 	if (io_end_cachep == NULL)
 		return -ENOMEM;
 	return 0;
 }
 
-void ext4_exit_pageio(void)
+void pxt4_exit_pageio(void)
 {
 	kmem_cache_destroy(io_end_cachep);
 }
@@ -59,7 +59,7 @@ static void buffer_io_error(struct buffer_head *bh)
 			(unsigned long long)bh->b_blocknr);
 }
 
-static void ext4_finish_bio(struct bio *bio)
+static void pxt4_finish_bio(struct bio *bio)
 {
 	struct bio_vec *bvec;
 	struct bvec_iter_all iter_all;
@@ -114,17 +114,17 @@ static void ext4_finish_bio(struct bio *bio)
 	}
 }
 
-static void ext4_release_io_end(ext4_io_end_t *io_end)
+static void pxt4_release_io_end(pxt4_io_end_t *io_end)
 {
 	struct bio *bio, *next_bio;
 
 	BUG_ON(!list_empty(&io_end->list));
-	BUG_ON(io_end->flag & EXT4_IO_END_UNWRITTEN);
+	BUG_ON(io_end->flag & PXT4_IO_END_UNWRITTEN);
 	WARN_ON(io_end->handle);
 
 	for (bio = io_end->bio; bio; bio = next_bio) {
 		next_bio = bio->bi_private;
-		ext4_finish_bio(bio);
+		pxt4_finish_bio(bio);
 		bio_put(bio);
 	}
 	kmem_cache_free(io_end_cachep, io_end);
@@ -135,10 +135,10 @@ static void ext4_release_io_end(ext4_io_end_t *io_end)
  * we are protected from truncate touching same part of extent tree by the
  * fact that truncate code waits for all DIO to finish (thus exclusion from
  * direct IO is achieved) and also waits for PageWriteback bits. Thus we
- * cannot get to ext4_ext_truncate() before all IOs overlapping that range are
- * completed (happens from ext4_free_ioend()).
+ * cannot get to pxt4_ext_truncate() before all IOs overlapping that range are
+ * completed (happens from pxt4_free_ioend()).
  */
-static int ext4_end_io(ext4_io_end_t *io)
+static int pxt4_end_io(pxt4_io_end_t *io)
 {
 	struct inode *inode = io->inode;
 	loff_t offset = io->offset;
@@ -146,57 +146,57 @@ static int ext4_end_io(ext4_io_end_t *io)
 	handle_t *handle = io->handle;
 	int ret = 0;
 
-	ext4_debug("ext4_end_io_nolock: io 0x%p from inode %lu,list->next 0x%p,"
+	pxt4_debug("pxt4_end_io_nolock: io 0x%p from inode %lu,list->next 0x%p,"
 		   "list->prev 0x%p\n",
 		   io, inode->i_ino, io->list.next, io->list.prev);
 
 	io->handle = NULL;	/* Following call will use up the handle */
-	ret = ext4_convert_unwritten_extents(handle, inode, offset, size);
-	if (ret < 0 && !ext4_forced_shutdown(EXT4_SB(inode->i_sb))) {
-		ext4_msg(inode->i_sb, KERN_EMERG,
+	ret = pxt4_convert_unwritten_extents(handle, inode, offset, size);
+	if (ret < 0 && !pxt4_forced_shutdown(PXT4_SB(inode->i_sb))) {
+		pxt4_msg(inode->i_sb, KERN_EMERG,
 			 "failed to convert unwritten extents to written "
 			 "extents -- potential data loss!  "
 			 "(inode %lu, offset %llu, size %zd, error %d)",
 			 inode->i_ino, offset, size, ret);
 	}
-	ext4_clear_io_unwritten_flag(io);
-	ext4_release_io_end(io);
+	pxt4_clear_io_unwritten_flag(io);
+	pxt4_release_io_end(io);
 	return ret;
 }
 
 static void dump_completed_IO(struct inode *inode, struct list_head *head)
 {
-#ifdef	EXT4FS_DEBUG
+#ifdef	PXT4FS_DEBUG
 	struct list_head *cur, *before, *after;
-	ext4_io_end_t *io, *io0, *io1;
+	pxt4_io_end_t *io, *io0, *io1;
 
 	if (list_empty(head))
 		return;
 
-	ext4_debug("Dump inode %lu completed io list\n", inode->i_ino);
+	pxt4_debug("Dump inode %lu completed io list\n", inode->i_ino);
 	list_for_each_entry(io, head, list) {
 		cur = &io->list;
 		before = cur->prev;
-		io0 = container_of(before, ext4_io_end_t, list);
+		io0 = container_of(before, pxt4_io_end_t, list);
 		after = cur->next;
-		io1 = container_of(after, ext4_io_end_t, list);
+		io1 = container_of(after, pxt4_io_end_t, list);
 
-		ext4_debug("io 0x%p from inode %lu,prev 0x%p,next 0x%p\n",
+		pxt4_debug("io 0x%p from inode %lu,prev 0x%p,next 0x%p\n",
 			    io, inode->i_ino, io0, io1);
 	}
 #endif
 }
 
 /* Add the io_end to per-inode completed end_io list. */
-static void ext4_add_complete_io(ext4_io_end_t *io_end)
+static void pxt4_add_complete_io(pxt4_io_end_t *io_end)
 {
-	struct ext4_inode_info *ei = EXT4_I(io_end->inode);
-	struct ext4_sb_info *sbi = EXT4_SB(io_end->inode->i_sb);
+	struct pxt4_inode_info *ei = PXT4_I(io_end->inode);
+	struct pxt4_sb_info *sbi = PXT4_SB(io_end->inode->i_sb);
 	struct workqueue_struct *wq;
 	unsigned long flags;
 
 	/* Only reserved conversions from writeback should enter here */
-	WARN_ON(!(io_end->flag & EXT4_IO_END_UNWRITTEN));
+	WARN_ON(!(io_end->flag & PXT4_IO_END_UNWRITTEN));
 	WARN_ON(!io_end->handle && sbi->s_journal);
 	spin_lock_irqsave(&ei->i_completed_io_lock, flags);
 	wq = sbi->rsv_conversion_wq;
@@ -206,13 +206,13 @@ static void ext4_add_complete_io(ext4_io_end_t *io_end)
 	spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
 }
 
-static int ext4_do_flush_completed_IO(struct inode *inode,
+static int pxt4_do_flush_completed_IO(struct inode *inode,
 				      struct list_head *head)
 {
-	ext4_io_end_t *io;
+	pxt4_io_end_t *io;
 	struct list_head unwritten;
 	unsigned long flags;
-	struct ext4_inode_info *ei = EXT4_I(inode);
+	struct pxt4_inode_info *ei = PXT4_I(inode);
 	int err, ret = 0;
 
 	spin_lock_irqsave(&ei->i_completed_io_lock, flags);
@@ -221,11 +221,11 @@ static int ext4_do_flush_completed_IO(struct inode *inode,
 	spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
 
 	while (!list_empty(&unwritten)) {
-		io = list_entry(unwritten.next, ext4_io_end_t, list);
-		BUG_ON(!(io->flag & EXT4_IO_END_UNWRITTEN));
+		io = list_entry(unwritten.next, pxt4_io_end_t, list);
+		BUG_ON(!(io->flag & PXT4_IO_END_UNWRITTEN));
 		list_del_init(&io->list);
 
-		err = ext4_end_io(io);
+		err = pxt4_end_io(io);
 		if (unlikely(!ret && err))
 			ret = err;
 	}
@@ -235,16 +235,16 @@ static int ext4_do_flush_completed_IO(struct inode *inode,
 /*
  * work on completed IO, to convert unwritten extents to extents
  */
-void ext4_end_io_rsv_work(struct work_struct *work)
+void pxt4_end_io_rsv_work(struct work_struct *work)
 {
-	struct ext4_inode_info *ei = container_of(work, struct ext4_inode_info,
+	struct pxt4_inode_info *ei = container_of(work, struct pxt4_inode_info,
 						  i_rsv_conversion_work);
-	ext4_do_flush_completed_IO(&ei->vfs_inode, &ei->i_rsv_conversion_list);
+	pxt4_do_flush_completed_IO(&ei->vfs_inode, &ei->i_rsv_conversion_list);
 }
 
-ext4_io_end_t *ext4_init_io_end(struct inode *inode, gfp_t flags)
+pxt4_io_end_t *pxt4_init_io_end(struct inode *inode, gfp_t flags)
 {
-	ext4_io_end_t *io = kmem_cache_zalloc(io_end_cachep, flags);
+	pxt4_io_end_t *io = kmem_cache_zalloc(io_end_cachep, flags);
 	if (io) {
 		io->inode = inode;
 		INIT_LIST_HEAD(&io->list);
@@ -253,44 +253,44 @@ ext4_io_end_t *ext4_init_io_end(struct inode *inode, gfp_t flags)
 	return io;
 }
 
-void ext4_put_io_end_defer(ext4_io_end_t *io_end)
+void pxt4_put_io_end_defer(pxt4_io_end_t *io_end)
 {
 	if (atomic_dec_and_test(&io_end->count)) {
-		if (!(io_end->flag & EXT4_IO_END_UNWRITTEN) || !io_end->size) {
-			ext4_release_io_end(io_end);
+		if (!(io_end->flag & PXT4_IO_END_UNWRITTEN) || !io_end->size) {
+			pxt4_release_io_end(io_end);
 			return;
 		}
-		ext4_add_complete_io(io_end);
+		pxt4_add_complete_io(io_end);
 	}
 }
 
-int ext4_put_io_end(ext4_io_end_t *io_end)
+int pxt4_put_io_end(pxt4_io_end_t *io_end)
 {
 	int err = 0;
 
 	if (atomic_dec_and_test(&io_end->count)) {
-		if (io_end->flag & EXT4_IO_END_UNWRITTEN) {
-			err = ext4_convert_unwritten_extents(io_end->handle,
+		if (io_end->flag & PXT4_IO_END_UNWRITTEN) {
+			err = pxt4_convert_unwritten_extents(io_end->handle,
 						io_end->inode, io_end->offset,
 						io_end->size);
 			io_end->handle = NULL;
-			ext4_clear_io_unwritten_flag(io_end);
+			pxt4_clear_io_unwritten_flag(io_end);
 		}
-		ext4_release_io_end(io_end);
+		pxt4_release_io_end(io_end);
 	}
 	return err;
 }
 
-ext4_io_end_t *ext4_get_io_end(ext4_io_end_t *io_end)
+pxt4_io_end_t *pxt4_get_io_end(pxt4_io_end_t *io_end)
 {
 	atomic_inc(&io_end->count);
 	return io_end;
 }
 
 /* BIO completion function for page writeback */
-static void ext4_end_bio(struct bio *bio)
+static void pxt4_end_bio(struct bio *bio)
 {
-	ext4_io_end_t *io_end = bio->bi_private;
+	pxt4_io_end_t *io_end = bio->bi_private;
 	sector_t bi_sector = bio->bi_iter.bi_sector;
 	char b[BDEVNAME_SIZE];
 
@@ -299,7 +299,7 @@ static void ext4_end_bio(struct bio *bio)
 		      (long long) bio->bi_iter.bi_sector,
 		      (unsigned) bio_sectors(bio),
 		      bio->bi_status)) {
-		ext4_finish_bio(bio);
+		pxt4_finish_bio(bio);
 		bio_put(bio);
 		return;
 	}
@@ -308,7 +308,7 @@ static void ext4_end_bio(struct bio *bio)
 	if (bio->bi_status) {
 		struct inode *inode = io_end->inode;
 
-		ext4_warning(inode->i_sb, "I/O error %d writing to inode %lu "
+		pxt4_warning(inode->i_sb, "I/O error %d writing to inode %lu "
 			     "(offset %llu size %ld starting block %llu)",
 			     bio->bi_status, inode->i_ino,
 			     (unsigned long long) io_end->offset,
@@ -319,26 +319,26 @@ static void ext4_end_bio(struct bio *bio)
 				blk_status_to_errno(bio->bi_status));
 	}
 
-	if (io_end->flag & EXT4_IO_END_UNWRITTEN) {
+	if (io_end->flag & PXT4_IO_END_UNWRITTEN) {
 		/*
 		 * Link bio into list hanging from io_end. We have to do it
 		 * atomically as bio completions can be racing against each
 		 * other.
 		 */
 		bio->bi_private = xchg(&io_end->bio, bio);
-		ext4_put_io_end_defer(io_end);
+		pxt4_put_io_end_defer(io_end);
 	} else {
 		/*
 		 * Drop io_end reference early. Inode can get freed once
 		 * we finish the bio.
 		 */
-		ext4_put_io_end_defer(io_end);
-		ext4_finish_bio(bio);
+		pxt4_put_io_end_defer(io_end);
+		pxt4_finish_bio(bio);
 		bio_put(bio);
 	}
 }
 
-void ext4_io_submit(struct ext4_io_submit *io)
+void pxt4_io_submit(struct pxt4_io_submit *io)
 {
 	struct bio *bio = io->io_bio;
 
@@ -352,7 +352,7 @@ void ext4_io_submit(struct ext4_io_submit *io)
 	io->io_bio = NULL;
 }
 
-void ext4_io_submit_init(struct ext4_io_submit *io,
+void pxt4_io_submit_init(struct pxt4_io_submit *io,
 			 struct writeback_control *wbc)
 {
 	io->io_wbc = wbc;
@@ -360,7 +360,7 @@ void ext4_io_submit_init(struct ext4_io_submit *io,
 	io->io_end = NULL;
 }
 
-static int io_submit_init_bio(struct ext4_io_submit *io,
+static int io_submit_init_bio(struct pxt4_io_submit *io,
 			      struct buffer_head *bh)
 {
 	struct bio *bio;
@@ -370,15 +370,15 @@ static int io_submit_init_bio(struct ext4_io_submit *io,
 		return -ENOMEM;
 	bio->bi_iter.bi_sector = bh->b_blocknr * (bh->b_size >> 9);
 	bio_set_dev(bio, bh->b_bdev);
-	bio->bi_end_io = ext4_end_bio;
-	bio->bi_private = ext4_get_io_end(io->io_end);
+	bio->bi_end_io = pxt4_end_bio;
+	bio->bi_private = pxt4_get_io_end(io->io_end);
 	io->io_bio = bio;
 	io->io_next_block = bh->b_blocknr;
 	wbc_init_bio(io->io_wbc, bio);
 	return 0;
 }
 
-static int io_submit_add_bh(struct ext4_io_submit *io,
+static int io_submit_add_bh(struct pxt4_io_submit *io,
 			    struct inode *inode,
 			    struct page *pagecache_page,
 			    struct page *bounce_page,
@@ -388,7 +388,7 @@ static int io_submit_add_bh(struct ext4_io_submit *io,
 
 	if (io->io_bio && bh->b_blocknr != io->io_next_block) {
 submit_and_retry:
-		ext4_io_submit(io);
+		pxt4_io_submit(io);
 	}
 	if (io->io_bio == NULL) {
 		ret = io_submit_init_bio(io, bh);
@@ -405,7 +405,7 @@ submit_and_retry:
 	return 0;
 }
 
-int ext4_bio_write_page(struct ext4_io_submit *io,
+int pxt4_bio_write_page(struct pxt4_io_submit *io,
 			struct page *page,
 			int len,
 			struct writeback_control *wbc,
@@ -442,7 +442,7 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
 	/*
 	 * In the first loop we prepare and mark buffers to submit. We have to
 	 * mark all buffers in the page before submitting so that
-	 * end_page_writeback() cannot be called from ext4_bio_end_io() when IO
+	 * end_page_writeback() cannot be called from pxt4_bio_end_io() when IO
 	 * on the first buffer finishes and we are still working on submitting
 	 * the second buffer.
 	 */
@@ -460,7 +460,7 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
 			if (!buffer_mapped(bh))
 				clear_buffer_dirty(bh);
 			if (io->io_bio)
-				ext4_io_submit(io);
+				pxt4_io_submit(io);
 			continue;
 		}
 		if (buffer_new(bh))
@@ -498,7 +498,7 @@ int ext4_bio_write_page(struct ext4_io_submit *io,
 			    (io->io_bio || wbc->sync_mode == WB_SYNC_ALL)) {
 				gfp_flags = GFP_NOFS;
 				if (io->io_bio)
-					ext4_io_submit(io);
+					pxt4_io_submit(io);
 				else
 					gfp_flags |= __GFP_NOFAIL;
 				congestion_wait(BLK_RW_ASYNC, HZ/50);

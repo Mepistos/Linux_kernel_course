@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- *  linux/fs/ext4/symlink.c
+ *  linux/fs/pxt4/symlink.c
  *
  * Only fast symlinks left here - the rest is done by generic code. AV, 1999
  *
@@ -15,15 +15,15 @@
  *
  *  Copyright (C) 1991, 1992  Linus Torvalds
  *
- *  ext4 symlink handling code
+ *  pxt4 symlink handling code
  */
 
 #include <linux/fs.h>
 #include <linux/namei.h>
-#include "ext4.h"
+#include "pxt4.h"
 #include "xattr.h"
 
-static const char *ext4_encrypted_get_link(struct dentry *dentry,
+static const char *pxt4_encrypted_get_link(struct dentry *dentry,
 					   struct inode *inode,
 					   struct delayed_call *done)
 {
@@ -35,9 +35,9 @@ static const char *ext4_encrypted_get_link(struct dentry *dentry,
 	if (!dentry)
 		return ERR_PTR(-ECHILD);
 
-	if (ext4_inode_is_fast_symlink(inode)) {
-		caddr = EXT4_I(inode)->i_data;
-		max_size = sizeof(EXT4_I(inode)->i_data);
+	if (pxt4_inode_is_fast_symlink(inode)) {
+		caddr = PXT4_I(inode)->i_data;
+		max_size = sizeof(PXT4_I(inode)->i_data);
 	} else {
 		cpage = read_mapping_page(inode->i_mapping, 0, NULL);
 		if (IS_ERR(cpage))
@@ -52,32 +52,32 @@ static const char *ext4_encrypted_get_link(struct dentry *dentry,
 	return paddr;
 }
 
-static int ext4_encrypted_symlink_getattr(const struct path *path,
+static int pxt4_encrypted_symlink_getattr(const struct path *path,
 					  struct kstat *stat, u32 request_mask,
 					  unsigned int query_flags)
 {
-	ext4_getattr(path, stat, request_mask, query_flags);
+	pxt4_getattr(path, stat, request_mask, query_flags);
 
 	return fscrypt_symlink_getattr(path, stat);
 }
 
-const struct inode_operations ext4_encrypted_symlink_inode_operations = {
-	.get_link	= ext4_encrypted_get_link,
-	.setattr	= ext4_setattr,
-	.getattr	= ext4_encrypted_symlink_getattr,
-	.listxattr	= ext4_listxattr,
+const struct inode_operations pxt4_encrypted_symlink_inode_operations = {
+	.get_link	= pxt4_encrypted_get_link,
+	.setattr	= pxt4_setattr,
+	.getattr	= pxt4_encrypted_symlink_getattr,
+	.listxattr	= pxt4_listxattr,
 };
 
-const struct inode_operations ext4_symlink_inode_operations = {
+const struct inode_operations pxt4_symlink_inode_operations = {
 	.get_link	= page_get_link,
-	.setattr	= ext4_setattr,
-	.getattr	= ext4_getattr,
-	.listxattr	= ext4_listxattr,
+	.setattr	= pxt4_setattr,
+	.getattr	= pxt4_getattr,
+	.listxattr	= pxt4_listxattr,
 };
 
-const struct inode_operations ext4_fast_symlink_inode_operations = {
+const struct inode_operations pxt4_fast_symlink_inode_operations = {
 	.get_link	= simple_get_link,
-	.setattr	= ext4_setattr,
-	.getattr	= ext4_getattr,
-	.listxattr	= ext4_listxattr,
+	.setattr	= pxt4_setattr,
+	.getattr	= pxt4_getattr,
+	.listxattr	= pxt4_listxattr,
 };

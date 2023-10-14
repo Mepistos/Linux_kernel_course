@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * linux/fs/ext4/readpage.c
+ * linux/fs/pxt4/readpage.c
  *
  * Copyright (C) 2002, Linus Torvalds.
  * Copyright (C) 2015, Google, Inc.
  *
  * This was originally taken from fs/mpage.c
  *
- * The intent is the ext4_mpage_readpages() function here is intended
+ * The intent is the pxt4_mpage_readpages() function here is intended
  * to replace mpage_readpages() in the general case, not just for
  * encrypted files.  It has some limitations (see below), where it
  * will fall back to read_block_full_page(), but these limitations
  * should only be hit when page_size != block_size.
  *
- * This will allow us to attach a callback function to support ext4
+ * This will allow us to attach a callback function to support pxt4
  * encryption.
  *
  * If anything unusual happens, such as:
@@ -45,7 +45,7 @@
 #include <linux/pagevec.h>
 #include <linux/cleancache.h>
 
-#include "ext4.h"
+#include "pxt4.h"
 
 #define NUM_PREALLOC_POST_READ_CTXS	128
 
@@ -183,7 +183,7 @@ static void mpage_end_io(struct bio *bio)
 	__read_end_io(bio);
 }
 
-static inline bool ext4_need_verity(const struct inode *inode, pgoff_t idx)
+static inline bool pxt4_need_verity(const struct inode *inode, pgoff_t idx)
 {
 	return fsverity_active(inode) &&
 	       idx < DIV_ROUND_UP(inode->i_size, PAGE_SIZE);
@@ -199,7 +199,7 @@ static struct bio_post_read_ctx *get_bio_post_read_ctx(struct inode *inode,
 	if (IS_ENCRYPTED(inode) && S_ISREG(inode->i_mode))
 		post_read_steps |= 1 << STEP_DECRYPT;
 
-	if (ext4_need_verity(inode, first_idx))
+	if (pxt4_need_verity(inode, first_idx))
 		post_read_steps |= 1 << STEP_VERITY;
 
 	if (post_read_steps) {
@@ -213,16 +213,16 @@ static struct bio_post_read_ctx *get_bio_post_read_ctx(struct inode *inode,
 	return ctx;
 }
 
-static inline loff_t ext4_readpage_limit(struct inode *inode)
+static inline loff_t pxt4_readpage_limit(struct inode *inode)
 {
 	if (IS_ENABLED(CONFIG_FS_VERITY) &&
-	    (IS_VERITY(inode) || ext4_verity_in_progress(inode)))
+	    (IS_VERITY(inode) || pxt4_verity_in_progress(inode)))
 		return inode->i_sb->s_maxbytes;
 
 	return i_size_read(inode);
 }
 
-int ext4_mpage_readpages(struct address_space *mapping,
+int pxt4_mpage_readpages(struct address_space *mapping,
 			 struct list_head *pages, struct page *page,
 			 unsigned nr_pages, bool is_readahead)
 {
@@ -241,7 +241,7 @@ int ext4_mpage_readpages(struct address_space *mapping,
 	struct block_device *bdev = inode->i_sb->s_bdev;
 	int length;
 	unsigned relative_block = 0;
-	struct ext4_map_blocks map;
+	struct pxt4_map_blocks map;
 
 	map.m_pblk = 0;
 	map.m_lblk = 0;
@@ -267,7 +267,7 @@ int ext4_mpage_readpages(struct address_space *mapping,
 
 		block_in_file = (sector_t)page->index << (PAGE_SHIFT - blkbits);
 		last_block = block_in_file + nr_pages * blocks_per_page;
-		last_block_in_file = (ext4_readpage_limit(inode) +
+		last_block_in_file = (pxt4_readpage_limit(inode) +
 				      blocksize - 1) >> blkbits;
 		if (last_block > last_block_in_file)
 			last_block = last_block_in_file;
@@ -276,7 +276,7 @@ int ext4_mpage_readpages(struct address_space *mapping,
 		/*
 		 * Map blocks using the previous result first.
 		 */
-		if ((map.m_flags & EXT4_MAP_MAPPED) &&
+		if ((map.m_flags & PXT4_MAP_MAPPED) &&
 		    block_in_file > map.m_lblk &&
 		    block_in_file < (map.m_lblk + map.m_len)) {
 			unsigned map_offset = block_in_file - map.m_lblk;
@@ -285,7 +285,7 @@ int ext4_mpage_readpages(struct address_space *mapping,
 			for (relative_block = 0; ; relative_block++) {
 				if (relative_block == last) {
 					/* needed? */
-					map.m_flags &= ~EXT4_MAP_MAPPED;
+					map.m_flags &= ~PXT4_MAP_MAPPED;
 					break;
 				}
 				if (page_block == blocks_per_page)
@@ -298,7 +298,7 @@ int ext4_mpage_readpages(struct address_space *mapping,
 		}
 
 		/*
-		 * Then do more ext4_map_blocks() calls until we are
+		 * Then do more pxt4_map_blocks() calls until we are
 		 * done with this page.
 		 */
 		while (page_block < blocks_per_page) {
@@ -306,7 +306,7 @@ int ext4_mpage_readpages(struct address_space *mapping,
 				map.m_lblk = block_in_file;
 				map.m_len = last_block - block_in_file;
 
-				if (ext4_map_blocks(NULL, inode, &map, 0) < 0) {
+				if (pxt4_map_blocks(NULL, inode, &map, 0) < 0) {
 				set_error_page:
 					SetPageError(page);
 					zero_user_segment(page, 0,
@@ -315,7 +315,7 @@ int ext4_mpage_readpages(struct address_space *mapping,
 					goto next_page;
 				}
 			}
-			if ((map.m_flags & EXT4_MAP_MAPPED) == 0) {
+			if ((map.m_flags & PXT4_MAP_MAPPED) == 0) {
 				fully_mapped = 0;
 				if (first_hole == blocks_per_page)
 					first_hole = page_block;
@@ -332,7 +332,7 @@ int ext4_mpage_readpages(struct address_space *mapping,
 			for (relative_block = 0; ; relative_block++) {
 				if (relative_block == map.m_len) {
 					/* needed? */
-					map.m_flags &= ~EXT4_MAP_MAPPED;
+					map.m_flags &= ~PXT4_MAP_MAPPED;
 					break;
 				} else if (page_block == blocks_per_page)
 					break;
@@ -345,7 +345,7 @@ int ext4_mpage_readpages(struct address_space *mapping,
 			zero_user_segment(page, first_hole << blkbits,
 					  PAGE_SIZE);
 			if (first_hole == 0) {
-				if (ext4_need_verity(inode, page->index) &&
+				if (pxt4_need_verity(inode, page->index) &&
 				    !fsverity_verify_page(page))
 					goto set_error_page;
 				SetPageUptodate(page);
@@ -395,7 +395,7 @@ int ext4_mpage_readpages(struct address_space *mapping,
 		if (bio_add_page(bio, page, length, 0) < length)
 			goto submit_and_realloc;
 
-		if (((map.m_flags & EXT4_MAP_BOUNDARY) &&
+		if (((map.m_flags & PXT4_MAP_BOUNDARY) &&
 		     (relative_block == map.m_len)) ||
 		    (first_hole != blocks_per_page)) {
 			submit_bio(bio);
@@ -409,7 +409,7 @@ int ext4_mpage_readpages(struct address_space *mapping,
 			bio = NULL;
 		}
 		if (!PageUptodate(page))
-			block_read_full_page(page, ext4_get_block);
+			block_read_full_page(page, pxt4_get_block);
 		else
 			unlock_page(page);
 	next_page:
@@ -422,10 +422,10 @@ int ext4_mpage_readpages(struct address_space *mapping,
 	return 0;
 }
 
-int __init ext4_init_post_read_processing(void)
+int __init pxt4_init_post_read_processing(void)
 {
 	bio_post_read_ctx_cache =
-		kmem_cache_create("ext4_bio_post_read_ctx",
+		kmem_cache_create("pxt4_bio_post_read_ctx",
 				  sizeof(struct bio_post_read_ctx), 0, 0, NULL);
 	if (!bio_post_read_ctx_cache)
 		goto fail;
@@ -442,7 +442,7 @@ fail:
 	return -ENOMEM;
 }
 
-void ext4_exit_post_read_processing(void)
+void pxt4_exit_post_read_processing(void)
 {
 	mempool_destroy(bio_post_read_ctx_pool);
 	kmem_cache_destroy(bio_post_read_ctx_cache);

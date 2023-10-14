@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- *  linux/fs/ext4/hash.c
+ *  linux/fs/pxt4/hash.c
  *
  * Copyright (C) 2002 by Theodore Ts'o
  */
@@ -9,7 +9,7 @@
 #include <linux/unicode.h>
 #include <linux/compiler.h>
 #include <linux/bitops.h>
-#include "ext4.h"
+#include "pxt4.h"
 
 #define DELTA 0x9E3779B9
 
@@ -197,7 +197,7 @@ static void str2hashbuf_unsigned(const char *msg, int len, __u32 *buf, int num)
  * represented, and whether or not the returned hash is 32 bits or 64
  * bits.  32 bit hashes will return 0 for the minor hash.
  */
-static int __ext4fs_dirhash(const char *name, int len,
+static int __pxt4fs_dirhash(const char *name, int len,
 			    struct dx_hash_info *hinfo)
 {
 	__u32	hash;
@@ -264,18 +264,18 @@ static int __ext4fs_dirhash(const char *name, int len,
 		return -1;
 	}
 	hash = hash & ~1;
-	if (hash == (EXT4_HTREE_EOF_32BIT << 1))
-		hash = (EXT4_HTREE_EOF_32BIT - 1) << 1;
+	if (hash == (PXT4_HTREE_EOF_32BIT << 1))
+		hash = (PXT4_HTREE_EOF_32BIT - 1) << 1;
 	hinfo->hash = hash;
 	hinfo->minor_hash = minor_hash;
 	return 0;
 }
 
-int ext4fs_dirhash(const struct inode *dir, const char *name, int len,
+int pxt4fs_dirhash(const struct inode *dir, const char *name, int len,
 		   struct dx_hash_info *hinfo)
 {
 #ifdef CONFIG_UNICODE
-	const struct unicode_map *um = EXT4_SB(dir->i_sb)->s_encoding;
+	const struct unicode_map *um = PXT4_SB(dir->i_sb)->s_encoding;
 	int r, dlen;
 	unsigned char *buff;
 	struct qstr qstr = {.name = name, .len = len };
@@ -291,12 +291,12 @@ int ext4fs_dirhash(const struct inode *dir, const char *name, int len,
 			goto opaque_seq;
 		}
 
-		r = __ext4fs_dirhash(buff, dlen, hinfo);
+		r = __pxt4fs_dirhash(buff, dlen, hinfo);
 
 		kfree(buff);
 		return r;
 	}
 opaque_seq:
 #endif
-	return __ext4fs_dirhash(name, len, hinfo);
+	return __pxt4fs_dirhash(name, len, hinfo);
 }

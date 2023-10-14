@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- *  fs/ext4/extents_status.h
+ *  fs/pxt4/extents_status.h
  *
  * Written by Yongqiang Yang <xiaoqiangnk@gmail.com>
  * Modified by
@@ -9,8 +9,8 @@
  *
  */
 
-#ifndef _EXT4_EXTENTS_STATUS_H
-#define _EXT4_EXTENTS_STATUS_H
+#ifndef _PXT4_EXTENTS_STATUS_H
+#define _PXT4_EXTENTS_STATUS_H
 
 /*
  * Turn on ES_DEBUG__ to get lots of info about extent status operations.
@@ -39,8 +39,8 @@ enum {
 	ES_FLAGS
 };
 
-#define ES_SHIFT (sizeof(ext4_fsblk_t)*8 - ES_FLAGS)
-#define ES_MASK (~((ext4_fsblk_t)0) << ES_SHIFT)
+#define ES_SHIFT (sizeof(pxt4_fsblk_t)*8 - ES_FLAGS)
+#define ES_MASK (~((pxt4_fsblk_t)0) << ES_SHIFT)
 
 #define EXTENT_STATUS_WRITTEN	(1 << ES_WRITTEN_B)
 #define EXTENT_STATUS_UNWRITTEN (1 << ES_UNWRITTEN_B)
@@ -48,27 +48,27 @@ enum {
 #define EXTENT_STATUS_HOLE	(1 << ES_HOLE_B)
 #define EXTENT_STATUS_REFERENCED	(1 << ES_REFERENCED_B)
 
-#define ES_TYPE_MASK	((ext4_fsblk_t)(EXTENT_STATUS_WRITTEN | \
+#define ES_TYPE_MASK	((pxt4_fsblk_t)(EXTENT_STATUS_WRITTEN | \
 			  EXTENT_STATUS_UNWRITTEN | \
 			  EXTENT_STATUS_DELAYED | \
 			  EXTENT_STATUS_HOLE) << ES_SHIFT)
 
-struct ext4_sb_info;
-struct ext4_extent;
+struct pxt4_sb_info;
+struct pxt4_extent;
 
 struct extent_status {
 	struct rb_node rb_node;
-	ext4_lblk_t es_lblk;	/* first logical block extent covers */
-	ext4_lblk_t es_len;	/* length of extent in block */
-	ext4_fsblk_t es_pblk;	/* first physical block */
+	pxt4_lblk_t es_lblk;	/* first logical block extent covers */
+	pxt4_lblk_t es_len;	/* length of extent in block */
+	pxt4_fsblk_t es_pblk;	/* first physical block */
 };
 
-struct ext4_es_tree {
+struct pxt4_es_tree {
 	struct rb_root root;
 	struct extent_status *cache_es;	/* recently accessed extent */
 };
 
-struct ext4_es_stats {
+struct pxt4_es_stats {
 	unsigned long es_stats_shrunk;
 	struct percpu_counter es_stats_cache_hits;
 	struct percpu_counter es_stats_cache_misses;
@@ -116,137 +116,137 @@ struct ext4_es_stats {
 
 struct pending_reservation {
 	struct rb_node rb_node;
-	ext4_lblk_t lclu;
+	pxt4_lblk_t lclu;
 };
 
-struct ext4_pending_tree {
+struct pxt4_pending_tree {
 	struct rb_root root;
 };
 
-extern int __init ext4_init_es(void);
-extern void ext4_exit_es(void);
-extern void ext4_es_init_tree(struct ext4_es_tree *tree);
+extern int __init pxt4_init_es(void);
+extern void pxt4_exit_es(void);
+extern void pxt4_es_init_tree(struct pxt4_es_tree *tree);
 
-extern int ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
-				 ext4_lblk_t len, ext4_fsblk_t pblk,
+extern int pxt4_es_insert_extent(struct inode *inode, pxt4_lblk_t lblk,
+				 pxt4_lblk_t len, pxt4_fsblk_t pblk,
 				 unsigned int status);
-extern void ext4_es_cache_extent(struct inode *inode, ext4_lblk_t lblk,
-				 ext4_lblk_t len, ext4_fsblk_t pblk,
+extern void pxt4_es_cache_extent(struct inode *inode, pxt4_lblk_t lblk,
+				 pxt4_lblk_t len, pxt4_fsblk_t pblk,
 				 unsigned int status);
-extern int ext4_es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
-				 ext4_lblk_t len);
-extern void ext4_es_find_extent_range(struct inode *inode,
+extern int pxt4_es_remove_extent(struct inode *inode, pxt4_lblk_t lblk,
+				 pxt4_lblk_t len);
+extern void pxt4_es_find_extent_range(struct inode *inode,
 				      int (*match_fn)(struct extent_status *es),
-				      ext4_lblk_t lblk, ext4_lblk_t end,
+				      pxt4_lblk_t lblk, pxt4_lblk_t end,
 				      struct extent_status *es);
-extern int ext4_es_lookup_extent(struct inode *inode, ext4_lblk_t lblk,
-				 ext4_lblk_t *next_lblk,
+extern int pxt4_es_lookup_extent(struct inode *inode, pxt4_lblk_t lblk,
+				 pxt4_lblk_t *next_lblk,
 				 struct extent_status *es);
-extern bool ext4_es_scan_range(struct inode *inode,
+extern bool pxt4_es_scan_range(struct inode *inode,
 			       int (*matching_fn)(struct extent_status *es),
-			       ext4_lblk_t lblk, ext4_lblk_t end);
-extern bool ext4_es_scan_clu(struct inode *inode,
+			       pxt4_lblk_t lblk, pxt4_lblk_t end);
+extern bool pxt4_es_scan_clu(struct inode *inode,
 			     int (*matching_fn)(struct extent_status *es),
-			     ext4_lblk_t lblk);
+			     pxt4_lblk_t lblk);
 
-static inline unsigned int ext4_es_status(struct extent_status *es)
+static inline unsigned int pxt4_es_status(struct extent_status *es)
 {
 	return es->es_pblk >> ES_SHIFT;
 }
 
-static inline unsigned int ext4_es_type(struct extent_status *es)
+static inline unsigned int pxt4_es_type(struct extent_status *es)
 {
 	return (es->es_pblk & ES_TYPE_MASK) >> ES_SHIFT;
 }
 
-static inline int ext4_es_is_written(struct extent_status *es)
+static inline int pxt4_es_is_written(struct extent_status *es)
 {
-	return (ext4_es_type(es) & EXTENT_STATUS_WRITTEN) != 0;
+	return (pxt4_es_type(es) & EXTENT_STATUS_WRITTEN) != 0;
 }
 
-static inline int ext4_es_is_unwritten(struct extent_status *es)
+static inline int pxt4_es_is_unwritten(struct extent_status *es)
 {
-	return (ext4_es_type(es) & EXTENT_STATUS_UNWRITTEN) != 0;
+	return (pxt4_es_type(es) & EXTENT_STATUS_UNWRITTEN) != 0;
 }
 
-static inline int ext4_es_is_delayed(struct extent_status *es)
+static inline int pxt4_es_is_delayed(struct extent_status *es)
 {
-	return (ext4_es_type(es) & EXTENT_STATUS_DELAYED) != 0;
+	return (pxt4_es_type(es) & EXTENT_STATUS_DELAYED) != 0;
 }
 
-static inline int ext4_es_is_hole(struct extent_status *es)
+static inline int pxt4_es_is_hole(struct extent_status *es)
 {
-	return (ext4_es_type(es) & EXTENT_STATUS_HOLE) != 0;
+	return (pxt4_es_type(es) & EXTENT_STATUS_HOLE) != 0;
 }
 
-static inline int ext4_es_is_mapped(struct extent_status *es)
+static inline int pxt4_es_is_mapped(struct extent_status *es)
 {
-	return (ext4_es_is_written(es) || ext4_es_is_unwritten(es));
+	return (pxt4_es_is_written(es) || pxt4_es_is_unwritten(es));
 }
 
-static inline int ext4_es_is_delonly(struct extent_status *es)
+static inline int pxt4_es_is_delonly(struct extent_status *es)
 {
-	return (ext4_es_is_delayed(es) && !ext4_es_is_unwritten(es));
+	return (pxt4_es_is_delayed(es) && !pxt4_es_is_unwritten(es));
 }
 
-static inline void ext4_es_set_referenced(struct extent_status *es)
+static inline void pxt4_es_set_referenced(struct extent_status *es)
 {
-	es->es_pblk |= ((ext4_fsblk_t)EXTENT_STATUS_REFERENCED) << ES_SHIFT;
+	es->es_pblk |= ((pxt4_fsblk_t)EXTENT_STATUS_REFERENCED) << ES_SHIFT;
 }
 
-static inline void ext4_es_clear_referenced(struct extent_status *es)
+static inline void pxt4_es_clear_referenced(struct extent_status *es)
 {
-	es->es_pblk &= ~(((ext4_fsblk_t)EXTENT_STATUS_REFERENCED) << ES_SHIFT);
+	es->es_pblk &= ~(((pxt4_fsblk_t)EXTENT_STATUS_REFERENCED) << ES_SHIFT);
 }
 
-static inline int ext4_es_is_referenced(struct extent_status *es)
+static inline int pxt4_es_is_referenced(struct extent_status *es)
 {
-	return (ext4_es_status(es) & EXTENT_STATUS_REFERENCED) != 0;
+	return (pxt4_es_status(es) & EXTENT_STATUS_REFERENCED) != 0;
 }
 
-static inline ext4_fsblk_t ext4_es_pblock(struct extent_status *es)
+static inline pxt4_fsblk_t pxt4_es_pblock(struct extent_status *es)
 {
 	return es->es_pblk & ~ES_MASK;
 }
 
-static inline void ext4_es_store_pblock(struct extent_status *es,
-					ext4_fsblk_t pb)
+static inline void pxt4_es_store_pblock(struct extent_status *es,
+					pxt4_fsblk_t pb)
 {
-	ext4_fsblk_t block;
+	pxt4_fsblk_t block;
 
 	block = (pb & ~ES_MASK) | (es->es_pblk & ES_MASK);
 	es->es_pblk = block;
 }
 
-static inline void ext4_es_store_status(struct extent_status *es,
+static inline void pxt4_es_store_status(struct extent_status *es,
 					unsigned int status)
 {
-	es->es_pblk = (((ext4_fsblk_t)status << ES_SHIFT) & ES_MASK) |
+	es->es_pblk = (((pxt4_fsblk_t)status << ES_SHIFT) & ES_MASK) |
 		      (es->es_pblk & ~ES_MASK);
 }
 
-static inline void ext4_es_store_pblock_status(struct extent_status *es,
-					       ext4_fsblk_t pb,
+static inline void pxt4_es_store_pblock_status(struct extent_status *es,
+					       pxt4_fsblk_t pb,
 					       unsigned int status)
 {
-	es->es_pblk = (((ext4_fsblk_t)status << ES_SHIFT) & ES_MASK) |
+	es->es_pblk = (((pxt4_fsblk_t)status << ES_SHIFT) & ES_MASK) |
 		      (pb & ~ES_MASK);
 }
 
-extern int ext4_es_register_shrinker(struct ext4_sb_info *sbi);
-extern void ext4_es_unregister_shrinker(struct ext4_sb_info *sbi);
+extern int pxt4_es_register_shrinker(struct pxt4_sb_info *sbi);
+extern void pxt4_es_unregister_shrinker(struct pxt4_sb_info *sbi);
 
-extern int ext4_seq_es_shrinker_info_show(struct seq_file *seq, void *v);
+extern int pxt4_seq_es_shrinker_info_show(struct seq_file *seq, void *v);
 
-extern int __init ext4_init_pending(void);
-extern void ext4_exit_pending(void);
-extern void ext4_init_pending_tree(struct ext4_pending_tree *tree);
-extern void ext4_remove_pending(struct inode *inode, ext4_lblk_t lblk);
-extern bool ext4_is_pending(struct inode *inode, ext4_lblk_t lblk);
-extern int ext4_es_insert_delayed_block(struct inode *inode, ext4_lblk_t lblk,
+extern int __init pxt4_init_pending(void);
+extern void pxt4_exit_pending(void);
+extern void pxt4_init_pending_tree(struct pxt4_pending_tree *tree);
+extern void pxt4_remove_pending(struct inode *inode, pxt4_lblk_t lblk);
+extern bool pxt4_is_pending(struct inode *inode, pxt4_lblk_t lblk);
+extern int pxt4_es_insert_delayed_block(struct inode *inode, pxt4_lblk_t lblk,
 					bool allocated);
-extern unsigned int ext4_es_delayed_clu(struct inode *inode, ext4_lblk_t lblk,
-					ext4_lblk_t len);
-extern void ext4_clear_inode_es(struct inode *inode);
+extern unsigned int pxt4_es_delayed_clu(struct inode *inode, pxt4_lblk_t lblk,
+					pxt4_lblk_t len);
+extern void pxt4_clear_inode_es(struct inode *inode);
 
-#endif /* _EXT4_EXTENTS_STATUS_H */
+#endif /* _PXT4_EXTENTS_STATUS_H */
