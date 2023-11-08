@@ -1,7 +1,7 @@
 ; -- start job file --
 [global]
 name=assignment7
-directory=/media/mep/testing_usb
+directory=/mnt/test
 rw=write
 bs=4K
 direct=0
@@ -9,6 +9,6 @@ numjobs=4
 verify=meta
 
 [fio-test]
-size=4G
+size=3G
 group_reporting
 ; -- end job file --
