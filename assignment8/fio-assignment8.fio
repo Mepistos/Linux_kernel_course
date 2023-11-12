@@ -1,7 +1,7 @@
 ; -- start job file --
 [global]
 name=assignment8
-directory=/media/mep/testing_usb
+directory=/mnt/test
 rw=write
 bs=4K
 direct=0
