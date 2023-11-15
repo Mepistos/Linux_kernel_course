@@ -291,11 +291,6 @@ out:
 }
 
 #define current get_current()
-static unsigned int get_cpu_idx(void *elem)
-{
-	struct task_struct *current_task = (struct task_struct *) elem;
-	return (unsigned int) current_task->cpu;
-}
 static unsigned long get_thread_idx(void *elem)
 {
 	int node_idx;
@@ -304,7 +299,9 @@ static unsigned long get_thread_idx(void *elem)
 
 	struct task_struct *current_task = (struct task_struct *) elem;
 
-	return (unsigned long) current_task->pid;
+	// pid
+	//return (unsigned long) current_task->pid;
+	return (unsigned long) current_task->cpu;
 }
 static const char * get_thread_name(void *elem)
 {
@@ -313,8 +310,7 @@ static const char * get_thread_name(void *elem)
 }
 static void print_thread_dm(unsigned long pid, const char *name, unsigned long long count, int percentage)
 {
-	unsigned int cpu = current->cpu;
-	printk("CPU[%d] called pxt4_file_write_iter() %lld times (%d%%)\n", cpu, count, percentage);
+	printk("CPU[%d] called pxt4_file_write_iter() %lld times (%d%%)\n", pid, count, percentage);
 }
 
 DEFINE_DS_MONITORING(assignment8, get_thread_idx, get_thread_name, print_thread_dm);
