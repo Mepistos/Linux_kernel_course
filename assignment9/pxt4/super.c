@@ -47,6 +47,9 @@
 #include <linux/kthread.h>
 #include <linux/freezer.h>
 
+#include "calclock.h"
+#include "ds_monitoring.h"
+
 #include "pxt4.h"
 #include "pxt4_extents.h"	/* Needed for trace points definition */
 #include "pxt4_jbd3.h"
@@ -6364,7 +6367,11 @@ out7:
 	return err;
 }
 
-extern unsigned long long file_write_iter_time, file_write_iter_count;
+//DECLARE_DS_MONITORING(assignment8);
+//extern unsigned long long file_write_iter_time, file_write_iter_count;
+
+KTDEC(assignment9);
+
 static void __exit pxt4_exit_fs(void)
 {
 	pxt4_destroy_lazyinit_thread();
@@ -6380,7 +6387,10 @@ static void __exit pxt4_exit_fs(void)
 	pxt4_exit_es();
 	pxt4_exit_pending();
 
-	printk("pxt4_file_write_iter is called %llu times and the time interval is %llunx\n", file_write_iter_count, file_write_iter_time);
+	//printk("pxt4_file_write_iter is called %llu times and the time interval is %llunx\n", file_write_iter_count, file_write_iter_time);
+	//print_ds_monitoring(&assignment8);
+	//delete_ds_monitoring(&assignment8);
+	ktprint(1, assignment9);
 }
 
 MODULE_AUTHOR("Remy Card, Stephen Tweedie, Andrew Morton, Andreas Dilger, Theodore Ts'o and others");

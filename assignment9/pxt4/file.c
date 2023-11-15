@@ -35,6 +35,7 @@
 #include "acl.h"
 
 #include "calclock.h"
+#include "ds_monitoring.h"
 
 #ifdef CONFIG_FS_DAX
 static ssize_t pxt4_dax_read_iter(struct kiocb *iocb, struct iov_iter *to)
@@ -289,16 +290,52 @@ out:
 	return ret;
 }
 
-unsigned long long file_write_iter_time, file_write_iter_count;
+/*
+#define current get_current()
+static unsigned long get_thread_idx(void *elem)
+{
+	int node_idx;
+	unsigned long xa_index;
+	int zone_idx;
+
+	struct task_struct *current_task = (struct task_struct *) elem;
+
+	// pid
+	//return (unsigned long) current_task->pid;
+	return (unsigned long) current_task->cpu;
+}
+static const char * get_thread_name(void *elem)
+{
+	struct task_struct *current_task = (struct task_struct *) elem;
+	return current_task->comm;
+}
+static void print_thread_dm(unsigned long pid, const char *name, unsigned long long count, int percentage)
+{
+	printk("CPU[%d] called pxt4_file_write_iter() %lld times (%d%%)\n", pid, count, percentage);
+}
+*/
+//DEFINE_DS_MONITORING(assignment8, get_thread_idx, get_thread_name, print_thread_dm);
+
+//unsigned long long file_write_iter_time, file_write_iter_count;
+KTDEF(assignment9);
+
 static ssize_t pxt4_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
 {
 	ssize_t ret;
-	struct timespec myclock[2];
+	//struct timespec myclock[2];
+	//unsigned int cpu = current->cpu;
+	ktime_t stopwatch[2];
 
-	getrawmonotonic(&myclock[0]);
+	ktget(&stopwatch[0]);
+	//getrawmonotonic(&myclock[0]);
 	ret = pxt4_file_write_iter_internal(iocb, from);
-	getrawmonotonic(&myclock[1]);
-	calclock(myclock, &file_write_iter_time, &file_write_iter_count);
+	ktget(&stopwatch[1]);
+	ktput(stopwatch, assignment9);
+
+	//getrawmonotonic(&myclock[1]);
+	//calclock(myclock, &file_write_iter_time, &file_write_iter_count);
+	//printk("cpu[%d] called pxt4_file_write_iter()\n", cpu);
+	//find_ds_monitoring(&assignment8, current);
 
 	return ret;
 }

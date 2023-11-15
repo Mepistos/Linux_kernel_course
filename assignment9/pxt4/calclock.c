@@ -60,4 +60,3 @@ void __ktprint(int depth, char *func_name, ktime_t time, unsigned long long coun
 	printk(KERN_CONT " (%d.%.2d%%)\n", percentage/100, percentage%100);
 }
 
-

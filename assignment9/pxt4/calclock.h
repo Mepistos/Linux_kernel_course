@@ -73,4 +73,3 @@ do {										\
 #define CALCLOCK_DEF(a)
 
 #endif /* __CALCLOCK_H */
-
