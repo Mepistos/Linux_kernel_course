@@ -3,7 +3,8 @@
 # Makefile for the linux ext4-filesystem routines.
 #
 
-obj-m += ticket_locks.o
+#obj-m += ticket_locks.o
+obj-m += src.o
 
 KDIR	:= /lib/modules/$(shell uname -r)/build
 PWD	:= $(shell pwd)
