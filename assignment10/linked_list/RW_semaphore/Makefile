@@ -5,6 +5,8 @@
 
 obj-m += src.o
 
+#src-y := ../calclock.o
+
 KDIR	:= /lib/modules/$(shell uname -r)/build
 PWD	:= $(shell pwd)
 

@@ -5,12 +5,14 @@
 #include <linux/kthread.h>
 #include <linux/sched.h>
 #include <linux/delay.h>
+#include <linux/ktime.h>
 
 //lock header
 #include <linux/spinlock.h>
 #include <linux/mutex.h>
 #include <linux/list.h>
-#include "calclock.h"
+#include "../calclock.h"
+#include "../calclock.c"
 
 // define spin lock
 spinlock_t s_lock;
@@ -34,16 +36,18 @@ KTDEF(delete_from_list);
 
 void *add_to_list(int thread_id, int range_bound[])
 {
-	printk(KERN_INFO "thread #%d: range: %d ~ %d\n", thread_id, range_bound[0], ranage_bound[1]);
-
+	printk(KERN_INFO "thread #%d: range: %d ~ %d\n", thread_id, range_bound[0], range_bound[1]);
+	
 	// put code
 	spin_lock(&s_lock);
+
 	int i;
-	for(i=range_bound[0];i<=range_boudn[1];i++) {
+	for(i=range_bound[0];i<=range_bound[1];i++) {
 		struct my_node *new = kmalloc(sizeof(struct my_node), GFP_KERNEL);
 		new->data = i;
-		list_add(&new->data, &my_list);
+		list_add(&new->list, &my_list);
 	}
+
 	spin_unlock(&s_lock);
 	add_counter++;
 
@@ -57,9 +61,11 @@ int search_list(int thread_id, int range_bound[])
 
 	// put code
 	spin_lock(&s_lock);
+
 	list_for_each_entry(cur, &my_list, list) {
 
 	}
+
 	spin_unlock(&s_lock);
 	srch_counter++;
 
@@ -73,12 +79,14 @@ int delete_from_list(int thread_id, int range_bound[])
 
 	// put code
 	spin_lock(&s_lock);
+
 	list_for_each_entry_safe(cur, tmp, &my_list, list) {
 		if(range_bound[0] <= cur->data && cur->data <= range_bound[1]) {
 			list_del(&cur->list);
 			kfree(cur);
 		}
 	}
+
 	spin_unlock(&s_lock);
 	del_counter++;
 
@@ -87,7 +95,7 @@ int delete_from_list(int thread_id, int range_bound[])
 
 static int control_func(void *data)
 {
-	int thread id = counter++;
+	int thread_id = counter++;
 	int bound[2] = { 250000*(thread_id-1), 249999+250000*(thread_id-1) };
 
 	int ret;
@@ -142,6 +150,7 @@ static int __init my_mod_init(void)
 KTDEC(add_to_list);
 KTDEC(search_list);
 KTDEC(delete_from_list);
+
 static void __exit my_mod_exit(void)
 {
 	ktprint(1, add_to_list);
@@ -154,6 +163,7 @@ static void __exit my_mod_exit(void)
 	kthread_stop(thread4);
 
 	list_del_init(&my_list);
+
 	printk("%s, Exiting module(spinlock)\n", __func__);
 }
 
